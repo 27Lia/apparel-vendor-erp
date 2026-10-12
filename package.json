@@ -1,0 +1,16 @@
+{
+  "name": "yakjin-tagging-search",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev": "concurrently -n server,web -c green,cyan \"pnpm dev:server\" \"pnpm dev:web\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
+  }
+}
