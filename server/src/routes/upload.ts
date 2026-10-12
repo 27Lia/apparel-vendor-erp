@@ -24,6 +24,18 @@ uploadRouter.post("/", upload.single("image"), async (req, res) => {
     const buffer = fs.readFileSync(file.path);
     const result = await tagImage(buffer, file.mimetype, file.originalname);
 
+    // 폼으로 브랜드/상품명을 직접 넘기면 AI 추정값을 덮어씀 (AI가 로고를 못 읽는 경우 보정용)
+    if (typeof req.body.brand === "string" && req.body.brand.trim()) {
+      result.brand = req.body.brand.trim();
+    }
+    if (typeof req.body.name === "string" && req.body.name.trim()) {
+      result.name = req.body.name.trim();
+    }
+    // 시딩용: 색상 스와치 이미지라 AI가 카테고리를 모양으로 못 읽을 때 태그를 직접 지정
+    if (typeof req.body.tags === "string" && req.body.tags.trim()) {
+      result.tags = JSON.parse(req.body.tags);
+    }
+
     const finalPath = `${file.filename}${path.extname(file.originalname)}`;
     fs.renameSync(file.path, path.join(uploadsDir, finalPath));
 

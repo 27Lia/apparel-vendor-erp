@@ -9,6 +9,10 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
+  const [textQuery, setTextQuery] = useState("");
+  const [similarOf, setSimilarOf] = useState<Product | null>(null);
+  const [similarResults, setSimilarResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
 
   async function loadFilters() {
     const res = await fetch("/api/products/filters");
@@ -28,6 +32,30 @@ export default function App() {
     loadFilters();
     search();
   }, []);
+
+  async function searchByText() {
+    if (!textQuery.trim()) return;
+    setSearching(true);
+    setSimilarOf(null);
+    try {
+      const res = await fetch(`/api/products/search/text?q=${encodeURIComponent(textQuery)}`);
+      const data = await res.json();
+      setSimilarResults(data.results ?? []);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function showSimilar(p: Product) {
+    setSimilarOf(p);
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/products/${p.id}/similar`);
+      setSimilarResults(await res.json());
+    } finally {
+      setSearching(false);
+    }
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -96,23 +124,62 @@ export default function App() {
         <button onClick={search}>검색</button>
       </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
-        {products.map((p) => (
-          <div key={p.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8 }}>
-            <img
-              src={`/uploads/${p.image_path}`}
-              alt={p.name}
-              style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 4 }}
-            />
-            <div style={{ fontWeight: 600, marginTop: 8 }}>{p.name}</div>
-            {p.brand && <div style={{ color: "#888", fontSize: 13 }}>{p.brand}</div>}
-            <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-              {p.tags.map((t) => t.value).join(" · ")}
-            </div>
-          </div>
-        ))}
-        {products.length === 0 && <div style={{ color: "#999" }}>검색 결과가 없습니다.</div>}
+      <section style={{ display: "flex", gap: 8, margin: "16px 0" }}>
+        <input
+          type="text"
+          placeholder="예: 레드 캐주얼 상의"
+          value={textQuery}
+          onChange={(e) => setTextQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && searchByText()}
+          style={{ flex: 1, padding: 6 }}
+        />
+        <button onClick={searchByText} disabled={searching}>문장으로 비슷한 스타일 찾기</button>
       </section>
+
+      <ProductGrid products={products} onSimilar={showSimilar} />
+
+      {(similarOf || similarResults.length > 0 || searching) && (
+        <section style={{ marginTop: 32, borderTop: "1px solid #ddd", paddingTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={{ fontSize: 16 }}>
+              {similarOf ? `"${similarOf.name}"와 비슷한 상품` : `"${textQuery}" 검색 결과`}
+            </h2>
+            <button onClick={() => { setSimilarOf(null); setSimilarResults([]); }}>닫기</button>
+          </div>
+          {searching ? (
+            <div style={{ color: "#999" }}>찾는 중...</div>
+          ) : (
+            <ProductGrid products={similarResults} onSimilar={showSimilar} />
+          )}
+        </section>
+      )}
     </div>
+  );
+}
+
+function ProductGrid({ products, onSimilar }: { products: Product[]; onSimilar: (p: Product) => void }) {
+  if (products.length === 0) {
+    return <div style={{ color: "#999" }}>검색 결과가 없습니다.</div>;
+  }
+  return (
+    <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+      {products.map((p) => (
+        <div key={p.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8 }}>
+          <img
+            src={`/uploads/${p.image_path}`}
+            alt={p.name}
+            style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 4 }}
+          />
+          <div style={{ fontWeight: 600, marginTop: 8 }}>{p.name}</div>
+          {p.brand && <div style={{ color: "#888", fontSize: 13 }}>{p.brand}</div>}
+          <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+            {p.tags.map((t) => t.value).join(" · ")}
+          </div>
+          <button style={{ marginTop: 8, width: "100%" }} onClick={() => onSimilar(p)}>
+            비슷한 상품 보기
+          </button>
+        </div>
+      ))}
+    </section>
   );
 }
