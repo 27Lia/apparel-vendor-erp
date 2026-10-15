@@ -249,7 +249,11 @@ function ProductGrid({
             ]}
           >
             <Meta
-              title={<div style={{ height: 44, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.name}</div>}
+              title={
+                <Text strong ellipsis={{ tooltip: p.name }} style={{ display: "block", minHeight: 44, lineHeight: "22px" }}>
+                  {p.name}
+                </Text>
+              }
               description={
                 <div style={{ minHeight: 70 }}>
                   {p.brand && <Text type="secondary" style={{ fontSize: 12 }}>{p.brand}</Text>}

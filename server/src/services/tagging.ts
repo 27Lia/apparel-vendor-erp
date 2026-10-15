@@ -44,7 +44,9 @@ async function claudeTagging(imageBuffer: Buffer, mediaType: string, filename: s
             type: "text",
             text:
               "이 의류/상품 이미지를 분석해서 아래 JSON 형식으로만 답해줘. 다른 설명은 붙이지 마.\n" +
-              `{"name": "짧은 상품명", "brand": "로고로 보이는 브랜드명 또는 null", ` +
+              "이미지에 상품이 여러 개 있어도 대표되는 한 가지만 골라서 이름을 짓고, " +
+              "name은 반드시 15자 이내로 짧게 (예: '블랙 집업 후드', '베이지 크루넥 니트').\n" +
+              `{"name": "15자 이내 짧은 상품명", "brand": "로고로 보이는 브랜드명 또는 null", ` +
               `"tags": [{"type": "color", "value": "...", "confidence": 0.0~1.0}, ` +
               `{"type": "category", "value": "...", "confidence": 0.0~1.0}, ` +
               `{"type": "style", "value": "...", "confidence": 0.0~1.0}]}\n` +
