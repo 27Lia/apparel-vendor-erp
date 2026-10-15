@@ -115,10 +115,13 @@ export default function OrdersPage() {
     {
       title: "스타일",
       key: "style",
+      width: 200,
       render: (_: unknown, o: OrderListItem) => (
         <Space>
-          <Image src={`/uploads/${o.style_image}`} width={32} height={32} style={{ objectFit: "cover", borderRadius: 4 }} preview={false} />
-          {o.style_name}
+          <Image src={`/uploads/${o.style_image}`} width={32} height={32} style={{ objectFit: "cover", borderRadius: 4, flexShrink: 0 }} preview={false} />
+          <Text ellipsis={{ tooltip: o.style_name }} style={{ maxWidth: 140 }}>
+            {o.style_name}
+          </Text>
         </Space>
       ),
     },
@@ -204,10 +207,26 @@ export default function OrdersPage() {
           </Form.Item>
           <Form.Item name="style_id" label="스타일" rules={[{ required: true }]}>
             <Select
-              placeholder="스타일 선택"
+              placeholder="스타일 선택 (이름 또는 브랜드로 검색)"
               showSearch
               optionFilterProp="label"
-              options={styles.map((s) => ({ value: s.id, label: `${s.name} (${s.brand})` }))}
+              options={styles.map((s) => ({
+                value: s.id,
+                label: `${s.name} (${s.brand})`,
+                image: s.image_path,
+              }))}
+              optionRender={(option) => (
+                <Space>
+                  <Image
+                    src={`/uploads/${option.data.image}`}
+                    width={28}
+                    height={28}
+                    style={{ objectFit: "cover", borderRadius: 4 }}
+                    preview={false}
+                  />
+                  {option.label}
+                </Space>
+              )}
             />
           </Form.Item>
           <Form.Item name="quantity" label="수량" rules={[{ required: true }]}>
