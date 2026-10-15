@@ -25,21 +25,39 @@ export default function App() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider width={220} theme="light" style={{ borderRight: "1px solid #f0f0f0" }}>
+      <Sider
+        width={220}
+        theme="light"
+        style={{ borderRight: "1px solid #f0f0f0" }}
+      >
         <div style={{ padding: "20px 20px 12px" }}>
-          <Title level={4} style={{ margin: 0 }}>YAKJIN ERP</Title>
-          <Text type="secondary" style={{ fontSize: 12 }}>오더 · 생산 · 선적 · 회계 · 인사</Text>
+          <Title level={4} style={{ margin: 0 }}>
+            {" "}
+            ERP
+          </Title>
         </div>
         <Menu
           mode="inline"
           selectedKeys={[tab]}
-          items={TABS.map((t) => ({ key: t.key, icon: t.icon, label: t.label }))}
+          items={TABS.map((t) => ({
+            key: t.key,
+            icon: t.icon,
+            label: t.label,
+          }))}
           onClick={(e) => setTab(e.key as TabKey)}
           style={{ borderInlineEnd: "none" }}
         />
       </Sider>
       <Layout>
-        <Header style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", paddingInline: 24 }}>
+        <Header
+          style={{
+            background: "#fff",
+            borderBottom: "1px solid #f0f0f0",
+            display: "flex",
+            alignItems: "center",
+            paddingInline: 24,
+          }}
+        >
           <Text strong style={{ fontSize: 16 }}>
             {TABS.find((t) => t.key === tab)?.label}
           </Text>

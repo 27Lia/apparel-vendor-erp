@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, DatePicker, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Table, Button, Modal, Form, Input, DatePicker, Typography, message, Popconfirm } from "antd";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Employee } from "../types";
 
@@ -46,6 +46,12 @@ export default function EmployeesPage() {
     await load();
   }
 
+  async function removeEmployee(id: number) {
+    await fetch(`/api/employees/${id}`, { method: "DELETE" });
+    message.success("삭제되었습니다.");
+    await load();
+  }
+
   const columns = [
     { title: "이름", dataIndex: "name", key: "name" },
     { title: "부서", dataIndex: "department", key: "department" },
@@ -60,6 +66,15 @@ export default function EmployeesPage() {
       dataIndex: "hire_date",
       key: "hire_date",
       render: (v: string | null) => v ?? <Text type="secondary">-</Text>,
+    },
+    {
+      title: "",
+      key: "actions",
+      render: (_: unknown, e: Employee) => (
+        <Popconfirm title="삭제할까요?" onConfirm={() => removeEmployee(e.id)}>
+          <Button size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
     },
   ];
 

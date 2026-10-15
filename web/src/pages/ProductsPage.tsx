@@ -235,11 +235,13 @@ function ProductGrid({
     return <Empty description="검색 결과가 없습니다." />;
   }
   return (
-    <Row gutter={[16, 16]}>
+    <Row gutter={[16, 16]} align="stretch">
       {products.map((p) => (
-        <Col key={p.id} xs={12} sm={8} md={6} lg={4}>
+        <Col key={p.id} xs={12} sm={8} md={6} lg={4} style={{ display: "flex" }}>
           <Card
             hoverable
+            style={{ display: "flex", flexDirection: "column", width: "100%" }}
+            styles={{ body: { flex: 1, display: "flex", flexDirection: "column" } }}
             cover={<img src={`/uploads/${p.image_path}`} alt={p.name} style={{ height: 160, objectFit: "cover" }} />}
             actions={[
               <a key="similar" onClick={() => onSimilar(p)}>비슷한 상품</a>,
@@ -247,16 +249,16 @@ function ProductGrid({
             ]}
           >
             <Meta
-              title={p.name}
+              title={<div style={{ height: 44, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.name}</div>}
               description={
-                <>
+                <div style={{ minHeight: 70 }}>
                   {p.brand && <Text type="secondary" style={{ fontSize: 12 }}>{p.brand}</Text>}
                   <div style={{ marginTop: 6 }}>
                     {p.tags.map((t) => (
                       <Tag key={t.value} style={{ marginBottom: 4 }}>{t.value}</Tag>
                     ))}
                   </div>
-                </>
+                </div>
               }
             />
           </Card>
