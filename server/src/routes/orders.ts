@@ -123,6 +123,17 @@ ordersRouter.post("/:id/production", (req, res) => {
   res.status(201).json({ id: logId });
 });
 
+ordersRouter.patch("/:id/production/:logId", (req, res) => {
+  const { factory, stage, quantity_completed } = req.body as Partial<ProductionLogRow>;
+  db.prepare(
+    `UPDATE production_logs
+     SET factory = COALESCE(?, factory), stage = COALESCE(?, stage),
+         quantity_completed = COALESCE(?, quantity_completed)
+     WHERE id = ? AND order_id = ?`
+  ).run(factory ?? null, stage ?? null, quantity_completed ?? null, req.params.logId, req.params.id);
+  res.json({ ok: true });
+});
+
 ordersRouter.post("/:id/shipment", (req, res) => {
   const orderId = Number(req.params.id);
   const { carrier, port, etd, eta, quantity, status } = req.body as Partial<ShipmentRow>;
