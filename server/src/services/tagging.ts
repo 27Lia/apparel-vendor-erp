@@ -27,7 +27,7 @@ async function claudeTagging(imageBuffer: Buffer, mediaType: string, filename: s
 
   const message = await client.messages.create({
     model: "claude-sonnet-5-5",
-    max_tokens: 500,
+    max_tokens: 1000,
     messages: [
       {
         role: "user",

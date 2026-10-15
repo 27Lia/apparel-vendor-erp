@@ -25,3 +25,9 @@ employeesRouter.post("/", (req, res) => {
 
   res.status(201).json({ id: lastInsertRowid, name, department, position, hire_date });
 });
+
+employeesRouter.delete("/:id", (req, res) => {
+  const result = db.prepare("DELETE FROM employees WHERE id = ?").run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: "직원을 찾을 수 없습니다." });
+  res.json({ ok: true });
+});
