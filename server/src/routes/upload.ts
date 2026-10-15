@@ -2,12 +2,10 @@ import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import { db } from "../db/client.js";
 import { tagImage } from "../services/tagging.js";
+import { uploadsDir } from "../config.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadsDir = path.join(__dirname, "..", "..", "uploads");
 fs.mkdirSync(uploadsDir, { recursive: true });
 
 const upload = multer({ dest: uploadsDir, limits: { fileSize: 10 * 1024 * 1024 } });

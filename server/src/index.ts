@@ -9,13 +9,14 @@ import { productsRouter } from "./routes/products.js";
 import { buyersRouter } from "./routes/buyers.js";
 import { ordersRouter } from "./routes/orders.js";
 import { employeesRouter } from "./routes/employees.js";
+import { uploadsDir } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/uploads", express.static(uploadsDir));
 
 app.use("/api/upload", uploadRouter);
 app.use("/api/products", productsRouter);
