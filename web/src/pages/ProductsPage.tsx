@@ -14,7 +14,7 @@ import {
   Spin,
   Empty,
 } from "antd";
-import { UploadOutlined, SearchOutlined } from "@ant-design/icons";
+import { UploadOutlined, SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import type { FilterOptions, Product } from "../types";
 
@@ -32,6 +32,13 @@ export default function ProductsPage() {
   const [similarOf, setSimilarOf] = useState<Product | null>(null);
   const [similarResults, setSimilarResults] = useState<Product[]>([]);
   const [searching, setSearching] = useState(false);
+  const [showingSimilar, setShowingSimilar] = useState(false);
+
+  function closeSimilar() {
+    setShowingSimilar(false);
+    setSimilarOf(null);
+    setSimilarResults([]);
+  }
 
   async function loadFilters() {
     const res = await fetch("/api/products/filters");
@@ -57,6 +64,7 @@ export default function ProductsPage() {
     if (!textQuery.trim()) return;
     setSearching(true);
     setSimilarOf(null);
+    setShowingSimilar(true);
     try {
       const res = await fetch(`/api/products/search/text?q=${encodeURIComponent(textQuery)}`);
       const data = await res.json();
@@ -68,6 +76,7 @@ export default function ProductsPage() {
 
   async function showSimilar(p: Product) {
     setSimilarOf(p);
+    setShowingSimilar(true);
     setSearching(true);
     try {
       const res = await fetch(`/api/products/${p.id}/similar`);
@@ -166,18 +175,20 @@ export default function ProductsPage() {
         </Button>
       </Space.Compact>
 
-      <ProductGrid products={products} onSimilar={showSimilar} />
-
-      {(similarOf || similarResults.length > 0 || searching) && (
-        <div style={{ marginTop: 32, borderTop: "1px solid #f0f0f0", paddingTop: 16 }}>
+      {showingSimilar ? (
+        <div>
           <Space style={{ marginBottom: 12, justifyContent: "space-between", width: "100%" }}>
+            <Button icon={<ArrowLeftOutlined />} onClick={closeSimilar}>
+              전체 상품으로 돌아가기
+            </Button>
             <Text strong>
               {similarOf ? `"${similarOf.name}"와 비슷한 상품` : `"${textQuery}" 검색 결과`}
             </Text>
-            <Button size="small" onClick={() => { setSimilarOf(null); setSimilarResults([]); }}>닫기</Button>
           </Space>
           {searching ? <Spin /> : <ProductGrid products={similarResults} onSimilar={showSimilar} />}
         </div>
+      ) : (
+        <ProductGrid products={products} onSimilar={showSimilar} />
       )}
     </div>
   );
