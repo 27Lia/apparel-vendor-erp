@@ -13,8 +13,11 @@ import {
   message,
   Spin,
   Empty,
+  Modal,
+  Form,
+  AutoComplete,
 } from "antd";
-import { UploadOutlined, SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { UploadOutlined, SearchOutlined, ArrowLeftOutlined, EditOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import type { FilterOptions, Product } from "../types";
 
@@ -33,6 +36,7 @@ export default function ProductsPage() {
   const [similarResults, setSimilarResults] = useState<Product[]>([]);
   const [searching, setSearching] = useState(false);
   const [showingSimilar, setShowingSimilar] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
 
   function closeSimilar() {
     setShowingSimilar(false);
@@ -74,6 +78,14 @@ export default function ProductsPage() {
     }
   }
 
+  function handleTextChange(value: string) {
+    setTextQuery(value);
+    // 검색창을 비우면 바로 전체 목록으로 돌아감 (뒤로가기 버튼 안 눌러도 됨)
+    if (!value.trim() && similarOf === null) {
+      closeSimilar();
+    }
+  }
+
   async function showSimilar(p: Product) {
     setSimilarOf(p);
     setShowingSimilar(true);
@@ -84,6 +96,12 @@ export default function ProductsPage() {
     } finally {
       setSearching(false);
     }
+  }
+
+  async function refreshAll() {
+    await loadFilters();
+    await search();
+    if (showingSimilar && similarOf) await showSimilar(similarOf);
   }
 
   const uploadProps: UploadProps = {
@@ -101,8 +119,7 @@ export default function ProductsPage() {
           `업로드 완료: ${result.name} / ${result.tags.map((t: { value: string }) => t.value).join(", ")}`
         );
         onSuccess?.(result);
-        await loadFilters();
-        await search();
+        await refreshAll();
       } catch (err) {
         message.error("업로드 실패: " + String(err));
         onError?.(err as Error);
@@ -116,7 +133,7 @@ export default function ProductsPage() {
     <div>
       <Paragraph type="secondary">
         이미지를 업로드하면 AI가 색상/카테고리/스타일을 자동으로 태깅해서 DB에 저장합니다.
-        여기서 등록한 스타일을 오더에 연결해서 씁니다.
+        AI가 브랜드나 태그를 잘못 잡으면 카드의 수정 버튼으로 바로 고칠 수 있어요.
       </Paragraph>
 
       <Space style={{ marginBottom: 16 }}>
@@ -165,10 +182,11 @@ export default function ProductsPage() {
 
       <Space.Compact style={{ width: "100%", maxWidth: 480, marginBottom: 20 }}>
         <Input
-          placeholder="예: 레드 캐주얼 상의"
+          placeholder="예: 레드 캐주얼 상의 (지우면 전체 목록으로 돌아감)"
           value={textQuery}
-          onChange={(e) => setTextQuery(e.target.value)}
+          onChange={(e) => handleTextChange(e.target.value)}
           onPressEnter={searchByText}
+          allowClear
         />
         <Button icon={<SearchOutlined />} onClick={searchByText} loading={searching}>
           문장으로 유사 스타일 찾기
@@ -185,16 +203,34 @@ export default function ProductsPage() {
               {similarOf ? `"${similarOf.name}"와 비슷한 상품` : `"${textQuery}" 검색 결과`}
             </Text>
           </Space>
-          {searching ? <Spin /> : <ProductGrid products={similarResults} onSimilar={showSimilar} />}
+          {searching ? <Spin /> : <ProductGrid products={similarResults} onSimilar={showSimilar} onEdit={setEditing} />}
         </div>
       ) : (
-        <ProductGrid products={products} onSimilar={showSimilar} />
+        <ProductGrid products={products} onSimilar={showSimilar} onEdit={setEditing} />
       )}
+
+      <EditProductModal
+        product={editing}
+        brands={filters.brands}
+        onClose={() => setEditing(null)}
+        onSaved={async () => {
+          setEditing(null);
+          await refreshAll();
+        }}
+      />
     </div>
   );
 }
 
-function ProductGrid({ products, onSimilar }: { products: Product[]; onSimilar: (p: Product) => void }) {
+function ProductGrid({
+  products,
+  onSimilar,
+  onEdit,
+}: {
+  products: Product[];
+  onSimilar: (p: Product) => void;
+  onEdit: (p: Product) => void;
+}) {
   if (products.length === 0) {
     return <Empty description="검색 결과가 없습니다." />;
   }
@@ -207,6 +243,7 @@ function ProductGrid({ products, onSimilar }: { products: Product[]; onSimilar: 
             cover={<img src={`/uploads/${p.image_path}`} alt={p.name} style={{ height: 160, objectFit: "cover" }} />}
             actions={[
               <a key="similar" onClick={() => onSimilar(p)}>비슷한 상품</a>,
+              <a key="edit" onClick={() => onEdit(p)}><EditOutlined /> 수정</a>,
             ]}
           >
             <Meta
@@ -226,5 +263,80 @@ function ProductGrid({ products, onSimilar }: { products: Product[]; onSimilar: 
         </Col>
       ))}
     </Row>
+  );
+}
+
+function EditProductModal({
+  product,
+  brands,
+  onClose,
+  onSaved,
+}: {
+  product: Product | null;
+  brands: string[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form] = Form.useForm();
+
+  useEffect(() => {
+    if (product) {
+      form.setFieldsValue({
+        name: product.name,
+        brand: product.brand ?? undefined,
+        color: product.tags.find((t) => t.type === "color")?.value,
+        category: product.tags.find((t) => t.type === "category")?.value,
+        style: product.tags.find((t) => t.type === "style")?.value,
+      });
+    }
+  }, [product, form]);
+
+  async function handleSave(values: { name: string; brand?: string; color?: string; category?: string; style?: string }) {
+    if (!product) return;
+    const tags = [
+      values.color && { type: "color", value: values.color },
+      values.category && { type: "category", value: values.category },
+      values.style && { type: "style", value: values.style },
+    ].filter(Boolean);
+
+    await fetch(`/api/products/${product.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: values.name, brand: values.brand ?? null, tags }),
+    });
+    message.success("수정되었습니다.");
+    onSaved();
+  }
+
+  return (
+    <Modal title="상품 정보 수정" open={!!product} onCancel={onClose} footer={null} destroyOnClose>
+      <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form.Item name="name" label="상품명" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="brand" label="브랜드">
+          <AutoComplete
+            allowClear
+            placeholder="브랜드 선택 또는 직접 입력"
+            options={brands.map((b) => ({ value: b }))}
+            filterOption={(input, option) =>
+              (option?.value ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+          />
+        </Form.Item>
+        <Form.Item name="color" label="색상">
+          <Input />
+        </Form.Item>
+        <Form.Item name="category" label="카테고리">
+          <Input />
+        </Form.Item>
+        <Form.Item name="style" label="스타일">
+          <Input />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" block>저장</Button>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }
