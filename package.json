@@ -5,7 +5,9 @@
   "scripts": {
     "dev:server": "pnpm --filter server dev",
     "dev:web": "pnpm --filter web dev",
-    "dev": "concurrently -n server,web -c green,cyan \"pnpm dev:server\" \"pnpm dev:web\""
+    "dev": "concurrently -n server,web -c green,cyan \"pnpm dev:server\" \"pnpm dev:web\"",
+    "build": "pnpm --filter web build && pnpm --filter server build",
+    "start": "pnpm --filter server start"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
