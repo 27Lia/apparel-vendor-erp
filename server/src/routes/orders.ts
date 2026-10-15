@@ -45,8 +45,16 @@ ordersRouter.post("/", (req, res) => {
       )
       .run(order_no.trim(), buyer_id, style_id, quantity, due_date ?? null);
     res.status(201).json({ id: lastInsertRowid });
-  } catch {
-    res.status(409).json({ error: "이미 존재하는 오더번호입니다." });
+  } catch (err) {
+    const message = String(err);
+    if (message.includes("UNIQUE")) {
+      res.status(409).json({ error: "이미 존재하는 오더번호입니다." });
+    } else if (message.includes("FOREIGN KEY")) {
+      res.status(400).json({ error: "존재하지 않는 바이어/스타일입니다." });
+    } else {
+      console.error(err);
+      res.status(500).json({ error: "오더 생성 중 오류가 발생했습니다." });
+    }
   }
 });
 

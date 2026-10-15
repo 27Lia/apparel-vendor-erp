@@ -40,6 +40,7 @@ uploadRouter.post("/", upload.single("image"), async (req, res) => {
     const insertProduct = db.prepare(
       "INSERT INTO products (name, brand, image_path) VALUES (?, ?, ?)"
     );
+    const insertBuyer = db.prepare("INSERT OR IGNORE INTO buyers (name) VALUES (?)");
     const findTag = db.prepare("SELECT id FROM tags WHERE type = ? AND value = ?");
     const insertTag = db.prepare("INSERT INTO tags (type, value) VALUES (?, ?)");
     const linkTag = db.prepare(
@@ -48,6 +49,8 @@ uploadRouter.post("/", upload.single("image"), async (req, res) => {
 
     const productId = db.transaction(() => {
       const { lastInsertRowid } = insertProduct.run(result.name, result.brand, finalPath);
+      // 새 브랜드로 업로드되면 바이어 마스터에도 바로 반영 (오더 등록 화면 Select에 즉시 뜨게)
+      if (result.brand) insertBuyer.run(result.brand);
       for (const tag of result.tags) {
         let tagRow = findTag.get(tag.type, tag.value) as { id: number } | undefined;
         if (!tagRow) {
