@@ -93,3 +93,125 @@ JOIN dbo.product_tags AS pt ON pt.product_id = p.id
 JOIN dbo.tags AS t ON t.id = pt.tag_id
 GROUP BY p.id, p.name, p.brand;
 GO
+
+-- =========================================================
+-- ERP 핵심 테이블: 바이어 / 오더 / 생산 / 선적 / 회계 / 인사
+-- =========================================================
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'buyers')
+BEGIN
+  CREATE TABLE dbo.buyers (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(100) NOT NULL UNIQUE
+  );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'orders')
+BEGIN
+  CREATE TABLE dbo.orders (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_no NVARCHAR(50) NOT NULL UNIQUE,
+    buyer_id INT NOT NULL FOREIGN KEY REFERENCES dbo.buyers(id),
+    style_id INT NOT NULL FOREIGN KEY REFERENCES dbo.products(id),
+    quantity INT NOT NULL,
+    order_date DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE),
+    due_date DATE NULL,
+    status NVARCHAR(20) NOT NULL DEFAULT 'placed', -- placed | in_production | shipped | completed | cancelled
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+  );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'production_logs')
+BEGIN
+  CREATE TABLE dbo.production_logs (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL FOREIGN KEY REFERENCES dbo.orders(id) ON DELETE CASCADE,
+    factory NVARCHAR(100) NOT NULL,
+    stage NVARCHAR(20) NOT NULL, -- cutting | sewing | finishing
+    quantity_completed INT NOT NULL,
+    log_date DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE)
+  );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'shipments')
+BEGIN
+  CREATE TABLE dbo.shipments (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL FOREIGN KEY REFERENCES dbo.orders(id) ON DELETE CASCADE,
+    carrier NVARCHAR(100) NULL,
+    port NVARCHAR(100) NULL,
+    etd DATE NULL,
+    eta DATE NULL,
+    quantity INT NOT NULL,
+    status NVARCHAR(20) NOT NULL DEFAULT 'booked' -- booked | departed | arrived
+  );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'invoices')
+BEGIN
+  CREATE TABLE dbo.invoices (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL FOREIGN KEY REFERENCES dbo.orders(id) ON DELETE CASCADE,
+    amount DECIMAL(12,2) NOT NULL,
+    currency NVARCHAR(10) NOT NULL DEFAULT 'USD',
+    issue_date DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE),
+    due_date DATE NULL,
+    paid BIT NOT NULL DEFAULT 0
+  );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'employees')
+BEGIN
+  CREATE TABLE dbo.employees (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(100) NOT NULL,
+    department NVARCHAR(50) NOT NULL,
+    position NVARCHAR(50) NULL,
+    hire_date DATE NULL
+  );
+END
+GO
+
+-- 오더 현황 대시보드: 바이어명 + 스타일명 + 최신 생산 진행률 + 선적 상태 + 결제 여부를
+-- orders를 기준으로 5개 테이블 JOIN/서브쿼리로 한 번에 모은다.
+CREATE OR ALTER PROCEDURE dbo.GetOrderDashboard
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  SELECT
+    o.id,
+    o.order_no,
+    b.name AS buyer_name,
+    p.name AS style_name,
+    o.quantity,
+    o.due_date,
+    o.status,
+    ISNULL(prod.produced_qty, 0) AS produced_qty,
+    CAST(ISNULL(prod.produced_qty, 0) AS FLOAT) / o.quantity AS production_rate,
+    sh.status AS shipment_status,
+    inv.paid AS invoice_paid
+  FROM dbo.orders o
+  JOIN dbo.buyers b ON b.id = o.buyer_id
+  JOIN dbo.products p ON p.id = o.style_id
+  OUTER APPLY (
+    SELECT SUM(quantity_completed) AS produced_qty
+    FROM dbo.production_logs pl
+    WHERE pl.order_id = o.id AND pl.stage = 'finishing'
+  ) prod
+  OUTER APPLY (
+    SELECT TOP 1 status FROM dbo.shipments s
+    WHERE s.order_id = o.id ORDER BY s.id DESC
+  ) sh
+  OUTER APPLY (
+    SELECT TOP 1 paid FROM dbo.invoices i
+    WHERE i.order_id = o.id ORDER BY i.id DESC
+  ) inv
+  ORDER BY o.created_at DESC;
+END
+GO
